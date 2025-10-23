@@ -14,6 +14,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       transition: background-color 0.3s, color 0.3s;
+      overflow: hidden;
     }
 
     :root {
@@ -42,6 +43,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
 
     .upload-btn {
@@ -57,21 +59,50 @@
       justify-content: center;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      z-index: 10;
     }
 
     #preview-container {
+      position: fixed;
+      bottom: -200px;
+      left: 0;
+      width: 100%;
+      background: var(--card-bg);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+      padding: 0.8rem;
       display: flex;
+      flex-wrap: nowrap;
       overflow-x: auto;
       gap: 8px;
-      padding: 0.5rem;
-      background: var(--card-bg);
-      border-top: 1px solid #ccc;
+      transition: bottom 0.4s ease;
+      max-height: 200px;
+    }
+
+    #preview-container.active {
+      bottom: 60px; /* nav上に表示 */
     }
 
     .preview-item img {
       height: 80px;
       border-radius: 8px;
       object-fit: cover;
+    }
+
+    #send-btn {
+      position: absolute;
+      bottom: 70px;
+      right: 16px;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
 
     nav {
@@ -81,6 +112,11 @@
       background: var(--card-bg);
       border-top: 1px solid #ccc;
       padding: 0.5rem 0;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      z-index: 5;
     }
 
     nav button {
@@ -101,6 +137,7 @@
   </main>
 
   <div id="preview-container"></div>
+  <button id="send-btn">送信</button>
 
   <nav>
     <button onclick="switchTab('home')">🏠 ホーム</button>
@@ -112,6 +149,7 @@
     const uploadBtn = document.getElementById('uploadBtn');
     const fileInput = document.getElementById('fileInput');
     const previewContainer = document.getElementById('preview-container');
+    const sendBtn = document.getElementById('send-btn');
     const mainContent = document.getElementById('main-content');
 
     uploadBtn.addEventListener('click', () => fileInput.click());
@@ -119,6 +157,14 @@
     fileInput.addEventListener('change', (event) => {
       const files = event.target.files;
       previewContainer.innerHTML = '';
+      if (files.length > 0) {
+        previewContainer.classList.add('active');
+        sendBtn.style.display = 'block';
+      } else {
+        previewContainer.classList.remove('active');
+        sendBtn.style.display = 'none';
+      }
+
       Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
@@ -131,6 +177,14 @@
         };
         reader.readAsDataURL(file);
       });
+    });
+
+    sendBtn.addEventListener('click', () => {
+      alert('写真を送信しました！（後でFirebase実装）');
+      fileInput.value = '';
+      previewContainer.innerHTML = '';
+      previewContainer.classList.remove('active');
+      sendBtn.style.display = 'none';
     });
 
     function switchTab(tab) {
@@ -157,6 +211,13 @@
         newFileInput.addEventListener('change', (event) => {
           const files = event.target.files;
           previewContainer.innerHTML = '';
+          if (files.length > 0) {
+            previewContainer.classList.add('active');
+            sendBtn.style.display = 'block';
+          } else {
+            previewContainer.classList.remove('active');
+            sendBtn.style.display = 'none';
+          }
           Array.from(files).forEach(file => {
             const reader = new FileReader();
             reader.onload = e => {
