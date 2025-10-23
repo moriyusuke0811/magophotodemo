@@ -64,7 +64,7 @@
 
     #preview-container {
       position: fixed;
-      bottom: -200px;
+      bottom: -250px;
       left: 0;
       width: 100%;
       background: var(--card-bg);
@@ -77,22 +77,22 @@
       overflow-x: auto;
       gap: 8px;
       transition: bottom 0.4s ease;
-      max-height: 200px;
+      max-height: 250px;
     }
 
     #preview-container.active {
-      bottom: 60px; /* nav上に表示 */
+      bottom: 100px; /* 高めに設定 */
     }
 
     .preview-item img {
-      height: 80px;
+      height: 100px;
       border-radius: 8px;
       object-fit: cover;
     }
 
     #send-btn {
       position: absolute;
-      bottom: 70px;
+      bottom: 120px;
       right: 16px;
       background: var(--accent-color);
       color: #fff;
@@ -234,7 +234,6 @@
       }
     }
 
-    // ダークモード状態を復元
     if (localStorage.getItem('darkMode') === 'true') {
       document.body.classList.add('dark');
     }
