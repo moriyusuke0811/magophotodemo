@@ -1,111 +1,182 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>写真データベース（UIモック）</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Upload App</title>
   <style>
-    :root{
-      --bg:#0f1724;
-      --card:#0b1220;
-      --accent:#2c7dce;
-      --muted:#94a3b8;
-      --glass: rgba(255,255,255,0.03);
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%; margin:0; font-family: Inter, system-ui, sans-serif; background:linear-gradient(180deg,var(--bg) 0%, #071021 60%); color:#e6eef8;}
-    header{padding:16px; text-align:center;}
-    header h1{margin:0; font-size:18px;}
-    main{padding:0 16px 100px 16px;}
-    .date-group{margin-top:18px}
-    .date-title{display:flex; justify-content:space-between; color:var(--muted); font-size:13px; margin-bottom:8px}
-    .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}
-    .thumb{position:relative; padding-bottom:100%; border-radius:12px; overflow:hidden; background:var(--glass);}
-    .thumb img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
 
-    /* 中央アップロードボタン */
-    .upload-center{
-      position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
-      z-index:100; width:80px; height:80px;
-      border-radius:50%; background:linear-gradient(135deg,var(--accent),#1b5fa8);
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:0 10px 30px rgba(14,37,70,0.6);
-      border:2px solid rgba(255,255,255,0.06); cursor:pointer;
+    :root {
+      --bg-color: #f5f5f5;
+      --text-color: #222;
+      --accent-color: #2c7dce;
+      --card-bg: #fff;
     }
-    .upload-center svg{width:36px; height:36px; fill:white;}
 
-    /* 下のナビタブ */
-    .tab-bar{
-      position:fixed; bottom:0; left:0; right:0; height:60px;
-      background:rgba(10,15,25,0.9); display:flex; justify-content:space-around; align-items:center;
-      border-top:1px solid rgba(255,255,255,0.05);
-      backdrop-filter:blur(8px);
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f5f5f5;
+      --card-bg: #1e1e1e;
     }
-    .tab{
-      display:flex; flex-direction:column; align-items:center; font-size:11px; color:var(--muted);
-      text-decoration:none; transition:color .2s;
-    }
-    .tab.active{color:var(--accent)}
-    .tab svg{width:22px; height:22px; margin-bottom:3px; fill:currentColor;}
 
-    .sheet{position:fixed; left:0; right:0; bottom:0; background:linear-gradient(180deg,#071226,#03101a); border-top-left-radius:14px; border-top-right-radius:14px; transform:translateY(110%); transition:transform .3s; padding:14px; z-index:120;}
-    .sheet.open{transform:translateY(0);}
-    .sheet .drag{border:2px dashed rgba(255,255,255,0.06); border-radius:12px; padding:20px; text-align:center; color:var(--muted);}
-    .sheet input{display:none}
+    header {
+      text-align: center;
+      padding: 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-btn {
+      background-color: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #preview-container {
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      padding: 0.5rem;
+      background: var(--card-bg);
+      border-top: 1px solid #ccc;
+    }
+
+    .preview-item img {
+      height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: var(--card-bg);
+      border-top: 1px solid #ccc;
+      padding: 0.5rem 0;
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>写真ライブラリ</h1>
-  </header>
+  <header>写真アップロード</header>
 
-  <main id="gallery">
-    <div class="empty" style="text-align:center;color:var(--muted);margin-top:30px">まだ写真がありません。中央のボタンから追加してください。</div>
+  <main id="main-content">
+    <button class="upload-btn" id="uploadBtn">＋</button>
+    <input type="file" id="fileInput" accept="image/*" multiple style="display: none;" />
   </main>
 
-  <div class="upload-center" id="openSheet">
-    <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM11 16h2V8h3l-4-5-4 5h3v8z"/></svg>
-  </div>
+  <div id="preview-container"></div>
 
-  <nav class="tab-bar">
-    <a href="#home" class="tab active" id="tabHome">
-      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      ホーム
-    </a>
-    <a href="#library" class="tab" id="tabLibrary">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
-      ライブラリ
-    </a>
-    <a href="#settings" class="tab" id="tabSettings">
-      <svg viewBox="0 0 24 24"><path d="M19.14 12.94a1.72 1.72 0 000-1.88l2.03-1.58a.5.5 0 00.11-.66l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.007 7.007 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.22-1.14.52-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.72 8.82a.5.5 0 00.11.66l2.03 1.58a1.72 1.72 0 000 1.88l-2.03 1.58a.5.5 0 00-.11.66l1.92 3.32a.5.5 0 00.61.22l2.39-.96c.48.42 1.03.77 1.62.99l.36 2.54a.5.5 0 00.5.42h3.84a.5.5 0 00.5-.42l.36-2.54c.59-.22 1.14-.57 1.62-.99l2.39.96a.5.5 0 00.61-.22l1.92-3.32a.5.5 0 00-.11-.66l-2.03-1.58zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z"/></svg>
-      設定
-    </a>
+  <nav>
+    <button onclick="switchTab('home')">🏠 ホーム</button>
+    <button onclick="switchTab('library')">📷 ライブラリ</button>
+    <button onclick="switchTab('settings')">⚙ 設定</button>
   </nav>
 
-  <div id="sheet" class="sheet">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <strong>写真を追加</strong>
-      <button id="closeSheet" style="background:none;border:none;color:var(--muted)">閉じる</button>
-    </div>
-    <label class="drag" for="fileInput">
-      <input id="fileInput" type="file" accept="image/*" multiple capture="environment" />
-      <div>ここに画像をドラッグまたはタップして選択</div>
-    </label>
-  </div>
-
   <script>
-    const sheet = document.getElementById('sheet');
-    const openSheet = document.getElementById('openSheet');
-    const closeSheet = document.getElementById('closeSheet');
-    openSheet.addEventListener('click',()=>sheet.classList.add('open'));
-    closeSheet.addEventListener('click',()=>sheet.classList.remove('open'));
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('preview-container');
+    const mainContent = document.getElementById('main-content');
 
-    document.querySelectorAll('.tab').forEach(tab=>{
-      tab.addEventListener('click',()=>{
-        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-        tab.classList.add('active');
+    uploadBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (event) => {
+      const files = event.target.files;
+      previewContainer.innerHTML = '';
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          const div = document.createElement('div');
+          div.classList.add('preview-item');
+          div.appendChild(img);
+          previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
       });
     });
+
+    function switchTab(tab) {
+      if (tab === 'settings') {
+        mainContent.innerHTML = `
+          <h2>設定</h2>
+          <label>
+            <input type="checkbox" id="darkModeToggle"> ダークモード
+          </label>
+        `;
+        const toggle = document.getElementById('darkModeToggle');
+        toggle.checked = document.body.classList.contains('dark');
+        toggle.addEventListener('change', () => {
+          document.body.classList.toggle('dark', toggle.checked);
+          localStorage.setItem('darkMode', toggle.checked);
+        });
+      } else if (tab === 'library') {
+        mainContent.innerHTML = '<h2>ライブラリ</h2><p>アップロード済みの写真がここに表示されます。</p>';
+      } else {
+        mainContent.innerHTML = '<button class="upload-btn" id="uploadBtn">＋</button><input type="file" id="fileInput" accept="image/*" multiple style="display:none;">';
+        const newUploadBtn = document.getElementById('uploadBtn');
+        const newFileInput = document.getElementById('fileInput');
+        newUploadBtn.addEventListener('click', () => newFileInput.click());
+        newFileInput.addEventListener('change', (event) => {
+          const files = event.target.files;
+          previewContainer.innerHTML = '';
+          Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+              const img = document.createElement('img');
+              img.src = e.target.result;
+              const div = document.createElement('div');
+              div.classList.add('preview-item');
+              div.appendChild(img);
+              previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+      }
+    }
+
+    // ダークモード状態を復元
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark');
+    }
   </script>
 </body>
 </html>
