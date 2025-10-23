@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>写真データベース（UIモック）</title>
+  <style>
+    /* Mobile-first styling */
+    :root{
+      --bg:#0f1724; /* dark */
+      --card:#0b1220;
+      --accent:#2c7dce; /* user preferred accent */
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: linear-gradient(180deg,var(--bg) 0%, #071021 60%);
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding-bottom:80px; /* for fixed button */
+    }
+
+    header{
+      padding:18px 16px 8px 16px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    header h1{
+      font-size:18px; margin:0; letter-spacing:0.2px; font-weight:600;
+    }
+    header p{margin:0; color:var(--muted); font-size:12px}
+
+    .search-row{
+      padding:0 16px 12px 16px; display:flex; gap:8px; align-items:center;
+    }
+    .search-row input[type="search"]{
+      flex:1; padding:10px 12px; background:var(--glass); border:none; border-radius:10px; color:inherit; outline:none;
+    }
+
+    main{padding:0 16px 120px 16px}
+
+    .date-group{margin-top:18px}
+    .date-title{
+      display:flex; justify-content:space-between; align-items:center; gap:8px; color:var(--muted); font-size:13px; margin-bottom:8px;
+    }
+
+    .grid{
+      display:grid; grid-template-columns:repeat(2,1fr); gap:8px;
+    }
+    .thumb{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.25));
+      border-radius:12px; overflow:hidden; position:relative; padding-bottom:100%;
+      box-shadow: 0 6px 14px rgba(3,7,18,0.6);
+    }
+    .thumb img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
+    .thumb .meta{
+      position:absolute; left:8px; bottom:8px; right:8px; display:flex; justify-content:space-between; gap:6px; align-items:center;
+    }
+    .chip{background:rgba(0,0,0,0.45); padding:6px 8px; border-radius:999px; font-size:12px}
+
+    /* large preview modal */
+    .modal-backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:40}
+    .modal-backdrop.show{display:flex;}
+    .modal{
+      width:94%; max-width:720px; background:linear-gradient(180deg,#071326, #06131e); border-radius:14px; padding:12px; box-shadow:0 30px 60px rgba(2,6,23,0.7);
+    }
+    .modal .bigimg{width:100%; height:56vw; max-height:70vh; background:#00101a; border-radius:10px; overflow:hidden}
+    .modal img{width:100%; height:100%; object-fit:contain}
+    .modal .meta-list{margin-top:10px; color:var(--muted); font-size:13px}
+
+    /* upload button */
+    .upload-btn{
+      position:fixed; right:16px; bottom:16px; z-index:50; display:flex; gap:8px; align-items:center;
+    }
+    .fab{
+      width:60px; height:60px; border-radius:999px; background:linear-gradient(135deg,var(--accent), #1b5fa8); display:flex; align-items:center; justify-content:center; box-shadow:0 14px 30px rgba(14,37,70,0.6);
+      border:2px solid rgba(255,255,255,0.06); cursor:pointer;
+    }
+    .fab svg{width:26px; height:26px; fill:white}
+    .mini{
+      background:var(--glass); color:var(--muted); padding:10px 12px; border-radius:10px; font-size:13px; display:none; align-items:center; gap:8px;
+    }
+    @media (min-width:420px){
+      .mini{display:flex}
+    }
+
+    /* upload sheet */
+    .sheet{position:fixed; left:0; right:0; bottom:0; z-index:60; transform:translateY(110%); transition:transform .28s ease; background:linear-gradient(180deg,#071226, #03101a); border-top-left-radius:14px; border-top-right-radius:14px; padding:14px;}
+    .sheet.open{transform:translateY(0)}
+    .sheet .drag{
+      border:2px dashed rgba(255,255,255,0.06); border-radius:12px; padding:14px; display:flex; gap:10px; align-items:center; justify-content:center; flex-direction:column;
+      min-height:140px; text-align:center; color:var(--muted);
+    }
+    .sheet .drag input{display:none}
+
+    .row{display:flex; gap:8px}
+    button.btn{background:var(--accent); border:none; padding:10px 12px; border-radius:10px; color:white; font-weight:600; cursor:pointer}
+    .ghost{background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted)}
+
+    .empty{padding:20px; color:var(--muted); text-align:center}
+
+    footer{position:fixed; left:0; right:0; bottom:0; height:56px; pointer-events:none}
+
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>写真ライブラリ</h1>
+      <p>気軽に写真を送って日付別に見られるUIモック（モバイル縦向き優先）</p>
+    </div>
+  </header>
+
+  <div class="search-row">
+    <input id="search" type="search" placeholder="タイトルや日付で検索（例: 2025-10-23 / 海）" />
+    <button id="clear" class="ghost">クリア</button>
+  </div>
+
+  <main id="main">
+    <!-- gallery will be injected here -->
+    <div id="gallery"></div>
+  </main>
+
+  <!-- Upload FAB -->
+  <div class="upload-btn">
+    <div class="mini">履歴プレビュー</div>
+    <button id="openSheet" class="fab" aria-label="アップロードする">
+      <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM11 16h2V8h3l-4-5-4 5h3v8z"/></svg>
+    </button>
+  </div>
+
+  <!-- Sheet -->
+  <div id="sheet" class="sheet" aria-hidden="true">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+      <strong>写真を追加</strong>
+      <div style="display:flex; gap:8px">
+        <button id="closeSheet" class="ghost">閉じる</button>
+        <button id="saveAll" class="btn">保存（ダミー）</button>
+      </div>
+    </div>
+
+    <label class="drag" for="fileInput" id="dragArea">
+      <input id="fileInput" type="file" accept="image/*" multiple capture="environment" />
+      <div style="font-size:14px">ここに画像をドラッグ＆ドロップ、またはタップして選択</div>
+      <div style="font-size:12px; color:var(--muted)">※Firebase等は後で接続します。現在はブラウザのローカル保存で動作します。</div>
+    </label>
+
+    <div id="previews" style="margin-top:10px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px"></div>
+  </div>
+
+  <!-- image modal -->
+  <div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="bigimg" id="modalImgWrap"><img id="modalImg" src="" alt="プレビュー"/></div>
+      <div class="meta-list">
+        <div id="modalDate"></div>
+        <div id="modalNotes" style="margin-top:6px;color:var(--muted)"></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px">
+        <button id="modalDelete" class="ghost">削除</button>
+        <button id="modalClose" class="btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <footer></footer>
+
+  <script>
+    // Simple mobile-first UI mock for photo upload + date-grouped gallery
+    // Data is saved to localStorage under key 'photo_db_ui_photos'
+    // Where to add Firebase: replace saveToStore() and loadFromStore() implementations
+
+    const fileInput = document.getElementById('fileInput');
+    const dragArea = document.getElementById('dragArea');
+    const sheet = document.getElementById('sheet');
+    const openSheetBtn = document.getElementById('openSheet');
+    const closeSheetBtn = document.getElementById('closeSheet');
+    const previews = document.getElementById('previews');
+    const gallery = document.getElementById('gallery');
+    const saveAllBtn = document.getElementById('saveAll');
+    const search = document.getElementById('search');
+    const clear = document.getElementById('clear');
+
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalImg = document.getElementById('modalImg');
+    const modalDate = document.getElementById('modalDate');
+    const modalNotes = document.getElementById('modalNotes');
+    const modalClose = document.getElementById('modalClose');
+    const modalDelete = document.getElementById('modalDelete');
+
+    let state = {
+      photos: loadFromStore(), // array of {id, dataUrl, date, title?, notes?}
+      selectedId: null
+    };
+
+    // --- Storage helpers (swap these with Firebase calls later) ---
+    function saveToStore() {
+      // Replace this with Firebase upload + Firestore metadata write
+      localStorage.setItem('photo_db_ui_photos', JSON.stringify(state.photos));
+    }
+    function loadFromStore(){
+      try{const raw = localStorage.getItem('photo_db_ui_photos'); return raw?JSON.parse(raw):[] }catch(e){return []}
+    }
+
+    // --- UI / rendering ---
+    function renderGallery(filter=""){
+      gallery.innerHTML='';
+      if(state.photos.length===0){
+        gallery.innerHTML = '<div class="empty">まだ写真がありません。右下のボタンから追加してください。</div>';
+        return;
+      }
+      // group by date (YYYY-MM-DD)
+      const grouped = {};
+      state.photos.forEach(p => {
+        if(filter){
+          const f = filter.toLowerCase();
+          if(!(p.title && p.title.toLowerCase().includes(f)) && !(p.notes && p.notes.toLowerCase().includes(f)) && !p.date.includes(f)) return;
+        }
+        const d = p.date.split('T')[0];
+        if(!grouped[d]) grouped[d]=[];
+        grouped[d].push(p);
+      });
+      const dates = Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
+      if(dates.length===0){ gallery.innerHTML='<div class="empty">検索条件に該当する写真はありません。</div>'; return }
+      dates.forEach(date => {
+        const el = document.createElement('section'); el.className='date-group';
+        const header = document.createElement('div'); header.className='date-title';
+        header.innerHTML = `<div>${formatDateLabel(date)}</div><div class="chip">${grouped[date].length} 枚</div>`;
+        el.appendChild(header);
+        const grid = document.createElement('div'); grid.className='grid';
+        grouped[date].forEach(p => {
+          const t = document.createElement('div'); t.className='thumb';
+          t.innerHTML = `<img src="${p.dataUrl}" alt="${(p.title||'写真')}" loading="lazy"><div class="meta"><div class="chip">${p.title?escapeHtml(p.title):''}</div><div class="chip">${p.notes?truncate(p.notes,18):''}</div></div>`;
+          t.addEventListener('click', ()=>openModal(p.id));
+          grid.appendChild(t);
+        })
+        el.appendChild(grid);
+        gallery.appendChild(el);
+      })
+    }
+
+    function formatDateLabel(isoYMD){
+      const d = new Date(isoYMD+'T00:00:00');
+      return d.toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'})
+    }
+
+    function truncate(s,n){ if(!s) return ''; return s.length>n? s.slice(0,n-1)+'…' : s }
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]) }
+
+    // --- modal ---
+    function openModal(id){
+      const p = state.photos.find(x=>x.id===id); if(!p) return;
+      state.selectedId = id;
+      modalImg.src = p.dataUrl; modalDate.textContent = p.date; modalNotes.textContent = p.notes || '';
+      modalBackdrop.classList.add('show');
+    }
+    function closeModal(){ modalBackdrop.classList.remove('show'); state.selectedId=null }
+
+    modalClose.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e)=>{ if(e.target===modalBackdrop) closeModal() });
+
+    modalDelete.addEventListener('click', ()=>{
+      if(!state.selectedId) return;
+      if(!confirm('この写真を削除しますか？')) return;
+      state.photos = state.photos.filter(x=>x.id!==state.selectedId);
+      saveToStore(); renderGallery(search.value.trim()); closeModal();
+    })
+
+    // --- add files ---
+    fileInput.addEventListener('change', async (e)=>{
+      const files = Array.from(e.target.files || []);
+      await handleFiles(files);
+      fileInput.value='';
+    })
+
+    // drag & drop
+    ['dragenter','dragover'].forEach(ev=>{
+      dragArea.addEventListener(ev, (e)=>{ e.preventDefault(); dragArea.style.borderColor='rgba(44,125,206,0.9)'; })
+    })
+    ['dragleave','drop'].forEach(ev=>{
+      dragArea.addEventListener(ev, (e)=>{ e.preventDefault(); dragArea.style.borderColor='rgba(255,255,255,0.06)'; })
+    })
+    dragArea.addEventListener('drop', async (e)=>{
+      const files = Array.from(e.dataTransfer.files || []).filter(f=>f.type.startsWith('image/'));
+      await handleFiles(files);
+    })
+
+    async function handleFiles(files){
+      // show quick previews and allow user to edit title/notes before saving
+      previews.innerHTML='';
+      const created = [];
+      for(const f of files){
+        const reader = new FileReader();
+        const p = await new Promise(res=>{ reader.onload = ()=>res({name:f.name, dataUrl:reader.result}); reader.readAsDataURL(f); })
+        const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+        const obj = { id, dataUrl: p.dataUrl, date: (new Date()).toISOString(), title: '', notes: '' };
+        created.push(obj);
+
+        const box = document.createElement('div'); box.style.position='relative';
+        box.innerHTML = `<div style="aspect-ratio:1/1; border-radius:8px; overflow:hidden"><img src="${obj.dataUrl}" style="width:100%;height:100%;object-fit:cover"></div>
+          <input class="title" placeholder="タイトル (任意)" style="margin-top:6px; width:100%; padding:6px; border-radius:8px; border:none; outline:none; background:rgba(255,255,255,0.03); color:inherit; font-size:13px">
+          <input class="notes" placeholder="メモ (任意)" style="margin-top:6px; width:100%; padding:6px; border-radius:8px; border:none; outline:none; background:rgba(255,255,255,0.02); color:var(--muted); font-size:12px">`;
+        previews.appendChild(box);
+      }
+      // Save created with user-entered titles/notes when user taps 保存
+      saveAllBtn.onclick = ()=>{
+        const boxes = Array.from(previews.children);
+        boxes.forEach((box,i)=>{
+          const title = box.querySelector('.title').value.trim();
+          const notes = box.querySelector('.notes').value.trim();
+          created[i].title = title; created[i].notes = notes; // set
+          state.photos.unshift(created[i]);
+
+          // Optionally: upload to Firebase here
+          // uploadToFirebase(created[i]);
+        })
+        saveToStore(); renderGallery(search.value.trim()); previews.innerHTML=''; toggleSheet(false);
+      }
+    }
+
+    // --- open/close sheet ---
+    openSheetBtn.addEventListener('click', ()=>toggleSheet(true));
+    closeSheetBtn.addEventListener('click', ()=>toggleSheet(false));
+    function toggleSheet(flag){ sheet.classList.toggle('open', !!flag); sheet.setAttribute('aria-hidden', flag? 'false':'true') }
+
+    // --- search ---
+    search.addEventListener('input', ()=>renderGallery(search.value.trim()));
+    clear.addEventListener('click', ()=>{ search.value=''; renderGallery(''); })
+
+    // --- initial render ---
+    renderGallery();
+
+    // --- helper: where to integrate Firebase ---
+    // Example placeholder: implement uploadToFirebase(photoObj) to push binary or base64 to Firebase Storage
+    // and then save metadata with downloadURL + timestamp to Firestore or Realtime DB.
+    // function uploadToFirebase(photo){
+    //   // 1) upload photo.dataUrl (or blob) to Firebase Storage
+    //   // 2) get downloadURL
+    //   // 3) write metadata {downloadURL, date: photo.date, title: photo.title, notes: photo.notes} to Firestore
+    // }
+
+    // Accessibility: keyboard support for sheet (escape to close)
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Escape'){
+        if(sheet.classList.contains('open')) toggleSheet(false);
+        if(modalBackdrop.classList.contains('show')) closeModal();
+      }
+    })
+
+  </script>
+</body>
+</html>
